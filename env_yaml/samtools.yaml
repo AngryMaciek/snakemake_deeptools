@@ -1,0 +1,8 @@
+---
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - ncurses=6.1
+  - samtools=1.9
+...
