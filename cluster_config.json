@@ -8,7 +8,7 @@
 "mem":"20G"
 },
 
-"generate_files":
+"sort_bam":
 {
 "queue":"{params.queue}",
 "time": "{params.time}",
@@ -16,12 +16,68 @@
 "mem":"{resources.mem}"
 },
 
-"merge_results":
+"samtools_index":
 {
 "queue":"{params.queue}",
 "time": "{params.time}",
 "threads":"{resources.threads}",
 "mem":"{resources.mem}"
-}
+},
+
+"bam2bigWig":
+{
+"queue":"{params.queue}",
+"time": "{params.time}",
+"threads":"{resources.threads}",
+"mem":"{resources.mem}"
+},
+
+"bigWig_summary":
+{
+"queue":"{params.queue}",
+"time": "{params.time}",
+"threads":"{resources.threads}",
+"mem":"{resources.mem}"
+},
+
+"plot_pca":
+{
+"queue":"{params.queue}",
+"time": "{params.time}",
+"threads":"{resources.threads}",
+"mem":"{resources.mem}"
+},
+
+"correlation_plot":
+{
+"queue":"{params.queue}",
+"time": "{params.time}",
+"threads":"{resources.threads}",
+"mem":"{resources.mem}"
+},
+
+"plot_coverage":
+{
+"queue":"{params.queue}",
+"time": "{params.time}",
+"threads":"{resources.threads}",
+"mem":"{resources.mem}"
+},
+
+"fa_to_2bit":
+{
+"queue":"{params.queue}",
+"time": "{params.time}",
+"threads":"{resources.threads}",
+"mem":"{resources.mem}"
+},
+
+"GC_plot":
+{
+"queue":"{params.queue}",
+"time": "{params.time}",
+"threads":"{resources.threads}",
+"mem":"{resources.mem}"
+},
 
 }
