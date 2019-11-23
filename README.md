@@ -50,3 +50,68 @@ There are four scripts to start the pipeline, depending on whether you want to r
 ## License
 
 GPL v3.0
+
+
+
+------------------
+
+
+
+################################################################
+###############                                  ###############
+###############   DEEPTOOLS SNAKEMAKE PIPELINE   ###############
+###############                                  ###############
+###############   Maciej Bak                     ###############
+###############   maciej.bak@unibas.ch           ###############
+###############                                  ###############
+################################################################
+
+This pipeline is based on the example usage from the deepTools manual:
+https://deeptools.readthedocs.io/en/develop/index.html
+
+
+1) Install miniconda and snakemake (Linux)
+
+Snakemake is a workflow management system that helps to create and execute data processing pipelines.
+It requires python3 and can be most easily installed via the bioconda package of the python anaconda distribution.
+You're setup right after the following steps:
+
+wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+source .bashrc
+
+conda search -c bioconda snakemake
+conda install -c bioconda snakemake=5.2.2
+
+One will need pandas library as well, in case it's not already installed:
+
+conda install -c anaconda pandas=0.23.4
+
+
+2) Run the Pipeline
+
+Before each run adjust the config.yaml with the right information (input/output/parameters).
+The main input to the pipeline is a simple design table which has to have the following format:
+
+sample  bam
+[sample_name] [path_to_bam]
+...
+
+* Each row is a sequencing sample.
+* All the bam files need to have a different name. Regardless of their location/directory.
+* Bam files will be sorted in this pipeline.
+* Design table might have more columns than these above.
+
+Apart from the design table the pipeline requires a FASTA genome file.
+
+There are three commands for running the pipeline:
+
+* Write a DAG (directed acyclic graph) into dag.pdf and dag.png:
+bash snakemake.dag_run
+
+* Run the pipeline locally:
+bash snakemake.local_run
+
+* Run the pipeline on the computational cluster (SLURM workload menager):
+(if required, adapt the 'slurm_cluster.json' and 'jobscript.sh' files before starting the run)
+bash snakemake.cluster_run
