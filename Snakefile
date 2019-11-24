@@ -1,7 +1,7 @@
 ##############################################################################
 #
 #   Snakemake pipeline:
-#   deepTools
+#   RNA-Seq data analysis with deepTools
 #
 #   AUTHOR: Maciej_Bak
 #   AFFILIATION: Swiss_Institute_of_Bioinformatics
@@ -11,14 +11,29 @@
 #
 ##############################################################################
 
-
-'''
 # imports
-import sys
 import os
+import sys
+import pandas as pd
 
 # local rules
-localrules: create_output_dir, all
+localrules: all, create_out_dir
+
+# get path to the alignment file for a given sample
+def get_input_bam(sample):
+    design_table = pd.read_csv(config["design_file"], sep="\t", index_col=0)
+    return design_table.at[sample,"bam"]
+
+# get all sample names
+def get_all_samples():
+    design_table = pd.read_csv(config["design_file"], sep="\t", index_col=0)
+    return design_table.index.values
+
+# get the effective genome size for the genome in this analysis
+def get_effective_genome_size():
+    genome_sizes = \
+        pd.read_csv(config["effective_genome_sizes"], sep="\t", index_col=0)
+    return genome_sizes.at[config["genome_version"], "Effective size"]
 
 ##############################################################################
 ### Target rule with final output of the pipeline
@@ -26,19 +41,33 @@ localrules: create_output_dir, all
 
 rule all:
     input:
-        TXT_final_results = \
-            expand(os.path.join("{output_dir}", "results.txt"),
-                output_dir=config["output_dir"])
+        PNG_pca = expand(\
+            os.path.join("{output_dir}", "clustering", "PCA.png"), \
+                output_dir=config["output_dir"]),
+        PNG_pca_transposed = expand(\
+            os.path.join("{output_dir}", "clustering", "PCA_T.png"), \
+                output_dir=config["output_dir"]),
+        PNG_heatmap = expand(\
+            os.path.join("{output_dir}", "clustering", "heatmap.png"), \
+                output_dir=config["output_dir"]),
+        PNG_scatterplot = expand(\
+            os.path.join("{output_dir}", "clustering", "scatterplot.png"), \
+                output_dir=config["output_dir"]),
+        PNG_coverage_plot = expand(\
+            os.path.join("{output_dir}", "clustering", "coverage_plot.png"), \
+                output_dir=config["output_dir"]),
+        PNG_gc_plot = expand(\
+            os.path.join("{output_dir}", "GC_bias", "{sample}_gc.png"), \
+                output_dir=config["output_dir"], sample=get_all_samples())
 
 ##############################################################################
 ### Create directories for the result
 ##############################################################################
 
-rule create_output_dir:
+rule create_out_dir:
     output:
         TMP_output = temp(os.path.join("{output_dir}", "dir_created"))
     params:
-        DIR_random_samples = os.path.join("{output_dir}", "random_samples"),
         DIR_results_dir = "{output_dir}",
         DIR_cluster_log = os.path.join("{output_dir}", "cluster_log"),
     log:
@@ -46,416 +75,383 @@ rule create_output_dir:
     shell:
         """
         mkdir -p {params.DIR_results_dir}; \
-        mkdir -p {params.DIR_random_samples}; \
         mkdir -p {params.DIR_cluster_log}; \
         mkdir -p {log.DIR_local_log}; \
         touch {output.TMP_output}
         """
 
 ##############################################################################
-### Sample some random data
-##############################################################################
-
-rule generate_files:
-    input:
-        TMP_output = os.path.join("{output_dir}", "dir_created"),
-        SCRIPT = \
-            os.path.join(config["src_dir"], "mb_random_sample.py")
-    output:
-        TXT_random_sample = \
-            os.path.join("{output_dir}", "random_samples", "{file}")
-    params:
-        LOG_cluster_log = \
-            os.path.join("{output_dir}", "cluster_log", \
-                "generate_files_{file}.log"),
-        queue = "30min",
-        time = "0:05:00"
-    log:
-        LOG_local_log = \
-            os.path.join("{output_dir}", "local_log", \
-                "generate_files_{file}.log"),
-    resources:
-        threads = 1,
-        mem = 5000
-    benchmark:
-        os.path.join("{output_dir}",
-            "cluster_log", "generate_files_{file}_benchmark.log")
-    conda:
-        "packages.yaml"
-    singularity:
-        ""
-    shell:
-        """
-        python {input.SCRIPT} \
-        --outfile {output.TXT_random_sample} \
-        &> {log.LOG_local_log};
-        """
-'''
-
-
-
-
-
-
-
-'''
-Pipeline to plot information about genomic coverages.
-
-Maciek Bak
-'''
-
-import os
-import sys
-import pandas as pd
-
-localrules: final, create_out_dir
-
-def get_input_bam(sample):
-    design_table = pd.read_csv(config["design_file"],sep="\t", index_col=0)
-    return design_table.at[sample,"bam"]
-
-def get_all_samples():
-    design_table = pd.read_csv(config["design_file"],sep="\t", index_col=0)
-    return design_table.index.values
-
-#################################################################################
-### Target rule with final outfiles
-#################################################################################
-
-rule final:
-    input:
-        pca = expand("{output_dir}/clustering_info/PCA.png", output_dir=config["output_dir"]),
-        pca_transposed = expand("{output_dir}/clustering_info/PCA_T.png", output_dir=config["output_dir"]),
-        heatmap = expand("{output_dir}/clustering_info/heatmap.png", output_dir=config["output_dir"]),
-        scatterplot = expand("{output_dir}/clustering_info/scatterplot.png", output_dir=config["output_dir"]),
-        coverage_plot = expand("{output_dir}/coverage_plot.png", output_dir=config["output_dir"]),
-        gc_plot = expand("{output_dir}/GC_bias/{sample}_gc.png", output_dir=config["output_dir"], sample=get_all_samples()),
-
-#################################################################################
-### Create directories for the result and copy config immediately
-#################################################################################
-
-rule create_out_dir:
-    output:
-        TMP_output = temp(os.path.join("{output_dir}", "dir_created"))
-    params:
-        main_dir = "{output_dir}",
-        LOG_cluster_log = "{output_dir}/cluster_log",
-    log:
-        LOG_local_log = "{output_dir}/local_log"
-    shell:
-        """
-        mkdir -p {params.main_dir}; \
-        mkdir -p {params.cluster_log}; \
-        mkdir -p {log.LOG_local_log}; \
-        touch {output.TMP_output}
-        """
-
-#################################################################################
 ### Sort alignment files
-#################################################################################
+##############################################################################
 
 rule sort_bam:
     input:
-        TMP_output = os.path.join("{output_dir}", "dir_created"),
-        bam = lambda wildcards: get_input_bam(wildcards.sample)
+        TMP_output = os.path.join("{output_dir}", "dir_created")
     output:
-        bam = "{output_dir}/bam_coverages/{sample}_sorted.bam"
+        BAM_sorted = \
+            os.path.join("{output_dir}", "coverages", "{sample}_sorted.bam")
     params:
-        LOG_cluster_log = "{output_dir}/cluster_log/sort_bam_{sample}.log",
+        BAM_path = lambda wildcards: get_input_bam(wildcards.sample),
+        LOG_cluster_log = \
+            os.path.join("{output_dir}", "cluster_log", \
+                "sort_bam_{sample}.log"),
         queue = "6hours",
         time = "6:00:00"
     log:
-        LOG_local_log = "{output_dir}/local_log/sort_bam_{sample}.log",
+        LOG_local_log = \
+            os.path.join("{output_dir}", "local_log", \
+                "sort_bam_{sample}.log")
     resources:
-        threads = 8,
+        threads = 4,
         mem = 20000
     benchmark:
-        "{output_dir}/cluster_log/sort_bam_{sample}_benchmark.log"
+        os.path.join("{output_dir}", "local_log", \
+            "sort_bam_{sample}_benchmark.log")
     conda:
         "env_yaml/samtools.yaml"
     shell:
         """
-        samtools sort -@ {resources.threads} {input.bam} 1> {output.bam} \
+        samtools sort -@ {resources.threads} {params.BAM_path} \
+        1> {output.BAM_sorted} \
         2> {log.LOG_local_log};
         """
 
-#################################################################################
+##############################################################################
 ### Index alignment file
-#################################################################################
+##############################################################################
 
 rule samtools_index:
     input:
-        bam = "{output_dir}/bam_coverages/{sample}_sorted.bam"
+        BAM_sorted = \
+            os.path.join("{output_dir}", "coverages", "{sample}_sorted.bam")
     output:
-        bai = "{output_dir}/bam_coverages/{sample}_sorted.bam.bai"
+        BAI_index = os.path.join(\
+            "{output_dir}", "coverages", "{sample}_sorted.bam.bai")
     params:
-        LOG_cluster_log = "{output_dir}/cluster_log/samtools_index_{sample}.log",
-        queue = "6hours",
-        time = "6:00:00"
+        LOG_cluster_log = \
+            os.path.join("{output_dir}", "cluster_log", \
+                "samtools_index_{sample}.log"),
+        queue = "30min",
+        time = "0:30:00"
     log:
-        LOG_local_log = "{output_dir}/local_log/samtools_index_{sample}.log",
+        LOG_local_log = \
+            os.path.join("{output_dir}", "local_log", \
+                "samtools_index_{sample}.log")
     resources:
-        threads = 8,
+        threads = 4,
         mem = 5000
     benchmark:
-        "{output_dir}/cluster_log/samtools_index_{sample}_benchmark.log"
+        os.path.join("{output_dir}", "local_log", \
+            "samtools_index_{sample}_benchmark.log")
     conda:
         "env_yaml/samtools.yaml"
     shell:
         """
-        samtools index -@ {resources.threads} {input.bam} 1> {output.bai} \
+        samtools index -@ {resources.threads} {input.BAM_sorted} \
+        1> {output.BAI_index} \
         2> {log.LOG_local_log};
         """
 
-#################################################################################
-### deepTools: create bigWig files from sorted bam
-#################################################################################
+##############################################################################
+### deepTools: create bigWig files from sorted and indexed bam
+##############################################################################
 
 rule bam2bigWig:
     input:
-        bam = "{output_dir}/bam_coverages/{sample}_sorted.bam",
-        bai = "{output_dir}/bam_coverages/{sample}_sorted.bam.bai"
+        BAM_sorted = \
+            os.path.join("{output_dir}", "coverages", "{sample}_sorted.bam"),
+        BAI_index = os.path.join(\
+            "{output_dir}", "coverages", "{sample}_sorted.bam.bai")
     output:
-        bigWig = "{output_dir}/bigWig_coverages/{sample}.bw"
+        BW_sample = os.path.join(\
+            "{output_dir}", "bigWig_coverages", "{sample}.bw")
     params:
-        LOG_cluster_log = "{output_dir}/cluster_log/bam2bigWig_{sample}.log",
+        LOG_cluster_log = \
+            os.path.join("{output_dir}", "cluster_log", \
+                "bam2bigWig_{sample}.log"),
         queue = "6hours",
         time = "6:00:00"
     log:
-        LOG_local_log = "{output_dir}/local_log/bam2bigWig_{sample}.log",
+        LOG_local_log = \
+            os.path.join("{output_dir}", "local_log", \
+                "bam2bigWig_{sample}.log")
     resources:
-        threads = 8,
+        threads = 4,
         mem = 20000
     benchmark:
-        "{output_dir}/cluster_log/bam2bigWig_{sample}_benchmark.log"
+        os.path.join("{output_dir}", "local_log", \
+            "bam2bigWig_{sample}_benchmark.log")
     conda:
         "env_yaml/deeptools.yaml"
     shell:
         """
         bamCoverage \
-        --bam {input.bam} \
-        --outFileName {output.bigWig} \
+        --bam {input.BAM_sorted} \
+        --outFileName {output.BW_sample} \
         --binSize 1 \
         --outFileFormat bigwig \
         --numberOfProcessors {resources.threads} \
         2> {log.LOG_local_log};
         """
 
-#################################################################################
+##############################################################################
 ### deepTools: create summary from bigWig
-#################################################################################
+##############################################################################
 
 rule bigWig_summary:
     input:
-        bigWig = expand("{output_dir}/bigWig_coverages/{sample}.bw", output_dir=config["output_dir"], sample=get_all_samples())
+        BW_sample = expand(os.path.join(\
+            "{output_dir}", "bigWig_coverages", "{sample}.bw"), \
+            output_dir=config["output_dir"], sample=get_all_samples())
     output:
-        summary = "{output_dir}/bigWig_summary.npz"
+        NPZ_summary = os.path.join("{output_dir}", "bigWig_summary.npz")
     params:
-        LOG_cluster_log = "{output_dir}/cluster_log/bigWig_summary.log",
+        LOG_cluster_log = \
+            os.path.join("{output_dir}", "cluster_log", \
+                "bigWig_summary.log"),
         queue = "6hours",
-        time = "2:00:00"
+        time = "6:00:00"
     log:
-        LOG_local_log = "{output_dir}/local_log/bigWig_summary.log",
+        LOG_local_log = \
+            os.path.join("{output_dir}", "local_log", \
+                "bigWig_summary.log")
     resources:
-        threads = 8,
+        threads = 4,
         mem = 20000
     benchmark:
-        "{output_dir}/cluster_log/bigWig_summary_benchmark.log"
+        os.path.join("{output_dir}", "local_log", \
+            "bigWig_summary_benchmark.log")
     conda:
         "env_yaml/deeptools.yaml"
     shell:
         """
         multiBigwigSummary bins \
-        --bwfiles {input.bigWig} \
-        --outFileName {output.summary} \
+        --bwfiles {input.BW_sample} \
+        --outFileName {output.NPZ_summary} \
         --numberOfProcessors {resources.threads} \
         2> {log.LOG_local_log};
         """
 
-#################################################################################
+##############################################################################
 ### deepTools: plot PCA
-#################################################################################
+##############################################################################
 
 rule plot_pca:
     input:
-        summary = "{output_dir}/bigWig_summary.npz"
+        NPZ_summary = os.path.join("{output_dir}", "bigWig_summary.npz")
     output:
-        pca = "{output_dir}/clustering_info/PCA.png",
-        pca_transposed = "{output_dir}/clustering_info/PCA_T.png"
+        PNG_pca = os.path.join(\
+            "{output_dir}", "clustering", "PCA.png"),
+        PNG_pca_transposed = os.path.join(\
+            "{output_dir}", "clustering", "PCA_T.png")
     params:
-        pca_table = "{output_dir}/clustering_info/PCA.tsv",
-        pca_transposed_table = "{output_dir}/clustering_info/PCA_T.tsv",
-        LOG_cluster_log = "{output_dir}/cluster_log/plot_pca.log",
+        TSV_pca_table = os.path.join(\
+            "{output_dir}", "clustering", "PCA.tsv"),
+        TSV_pca_transposed_table = os.path.join(\
+            "{output_dir}", "clustering", "PCA_T.tsv"),
+        LOG_cluster_log = \
+            os.path.join("{output_dir}", "cluster_log", \
+                "plot_pca.log"),
         queue = "6hours",
-        time = "1:00:00"
+        time = "6:00:00"
     log:
-        LOG_local_log = "{output_dir}/local_log/plot_pca.log",
+        LOG_local_log = \
+            os.path.join("{output_dir}", "local_log", \
+                "plot_pca.log")
     resources:
         threads = 1,
         mem = 20000
     benchmark:
-        "{output_dir}/cluster_log/plot_pca_benchmark.log"
+        os.path.join("{output_dir}", "local_log", \
+            "plot_pca_benchmark.log")
     conda:
         "env_yaml/deeptools.yaml"
     shell:
         """
         plotPCA \
-        --corData {input.summary} \
-        --plotFile {output.pca} \
-        --outFileNameData {params.pca_table} \
+        --corData {input.NPZ_summary} \
+        --plotFile {output.PNG_pca} \
+        --outFileNameData {params.TSV_pca_table} \
         --ntop 1000 \
         2> {log.LOG_local_log};
         plotPCA --transpose \
-        --corData {input.summary} \
-        --plotFile {output.pca_transposed} \
-        --outFileNameData {params.pca_transposed_table} \
+        --corData {input.NPZ_summary} \
+        --plotFile {output.PNG_pca_transposed} \
+        --outFileNameData {params.TSV_pca_transposed_table} \
         --ntop 1000 \
         2> {log.LOG_local_log};
         """
 
-#################################################################################
+##############################################################################
 ### deepTools: plot correlation
-#################################################################################
+##############################################################################
 
 rule correlation_plot:
     input:
-        summary = "{output_dir}/bigWig_summary.npz"
+        NPZ_summary = "{output_dir}/bigWig_summary.npz"
     output:
-        heatmap = "{output_dir}/clustering_info/heatmap.png",
-        scatterplot = "{output_dir}/clustering_info/scatterplot.png"
+        PNG_heatmap = os.path.join(\
+            "{output_dir}", "clustering", "heatmap.png"),
+        PNG_scatterplot = os.path.join(\
+            "{output_dir}", "clustering", "scatterplot.png")
     params:
-        heatmap_table = "{output_dir}/clustering_info/heatmap.tsv",
-        scatterplot_table = "{output_dir}/clustering_info/scatterplot.tsv",
-        LOG_cluster_log = "{output_dir}/cluster_log/correlation_plot.log",
-        queue = "6hours",
-        time = "1:00:00"
+        TSV_heatmap_table = os.path.join(\
+            "{output_dir}", "clustering", "heatmap.tsv"),
+        TSV_scatterplot_table = os.path.join(\
+            "{output_dir}", "clustering", "scatterplot.tsv"),
+        LOG_cluster_log = \
+            os.path.join("{output_dir}", "cluster_log", \
+                "correlation_plot.log"),
+        queue = "30min",
+        time = "0:30:00"
     log:
-        LOG_local_log = "{output_dir}/local_log/correlation_plot.log",
+        LOG_local_log = \
+            os.path.join("{output_dir}", "local_log", \
+                "correlation_plot.log")
     resources:
         threads = 1,
         mem = 20000
     benchmark:
-        "{output_dir}/cluster_log/correlation_plot_benchmark.log"
+        os.path.join("{output_dir}", "local_log", \
+            "correlation_plot_benchmark.log")
     conda:
         "env_yaml/deeptools.yaml"
     shell:
         """
         plotCorrelation \
-        --corData {input.summary} \
+        --corData {input.NPZ_summary} \
         --corMethod pearson \
         --whatToPlot heatmap \
-        --plotFile {output.heatmap} \
-        --outFileCorMatrix {params.heatmap_table} \
+        --plotFile {output.PNG_heatmap} \
+        --outFileCorMatrix {params.TSV_heatmap_table} \
         2> {log.LOG_local_log};
         plotCorrelation \
-        --corData {input.summary} \
+        --corData {input.NPZ_summary} \
         --corMethod pearson \
         --whatToPlot scatterplot \
-        --plotFile {output.scatterplot} \
-        --outFileCorMatrix {params.scatterplot_table} \
+        --plotFile {output.PNG_scatterplot} \
+        --outFileCorMatrix {params.TSV_scatterplot_table} \
         2> {log.LOG_local_log};
         """
 
-#################################################################################
+##############################################################################
 ### deepTools: plot coverage information
-#################################################################################
+##############################################################################
 
 rule plot_coverage:
     input:
-        bam = expand("{output_dir}/bam_coverages/{sample}_sorted.bam", output_dir=config["output_dir"], sample=get_all_samples()),
-        bai = expand("{output_dir}/bam_coverages/{sample}_sorted.bam.bai", output_dir=config["output_dir"], sample=get_all_samples())
+        BAM_sorted = expand(os.path.join(\
+            "{output_dir}", "coverages", "{sample}_sorted.bam"), \
+            output_dir=config["output_dir"], sample=get_all_samples()),
+        BAI_index = expand(os.path.join(\
+            "{output_dir}", "coverages", "{sample}_sorted.bam.bai"), \
+            output_dir=config["output_dir"], sample=get_all_samples())
     output:
-        coverage_plot = "{output_dir}/coverage_plot.png"
+        PNG_coverage_plot = \
+            os.path.join("{output_dir}", "clustering", "coverage_plot.png")
     params:
-        LOG_cluster_log = "{output_dir}/cluster_log/plot_coverage.log",
+        LOG_cluster_log = \
+            os.path.join("{output_dir}", "cluster_log", \
+                "plot_coverage.log"),
         queue = "6hours",
         time = "6:00:00"
     log:
-        LOG_local_log = "{output_dir}/local_log/plot_coverage.log",
+        LOG_local_log = \
+            os.path.join("{output_dir}", "local_log", \
+                "plot_coverage.log")
     resources:
-        threads = 8,
-        mem = 20000
+        threads = 4,
+        mem = 50000
     benchmark:
-        "{output_dir}/cluster_log/plot_coverage_benchmark.log"
+        os.path.join("{output_dir}", "local_log", \
+            "plot_coverage_benchmark.log")
     conda:
         "env_yaml/deeptools.yaml"
     shell:
         """
         plotCoverage \
-        --bamfiles {input.bam} \
-        --plotFile {output.coverage_plot} \
+        --bamfiles {input.BAM_sorted} \
+        --plotFile {output.PNG_coverage_plot} \
         --numberOfProcessors {resources.threads} \
         2> {log.LOG_local_log};
         """
 
-#################################################################################
+##############################################################################
 ### convert fasta genome to .2bit format
-#################################################################################
+##############################################################################
 
 rule fa_to_2bit:
-    input:
-        genome = config["genome"]
     output:
-        genome_2bit = "{output_dir}/genome.2bit"
+        TWOBIT_genome_2bit = os.path.join("{output_dir}", "genome.2bit")
     params:
-        LOG_cluster_log = "{output_dir}/cluster_log/fa_to_2bit.log",
-        queue = "6hours",
-        time = "1:00:00"
+        FASTA_genome = config["genome"],
+        LOG_cluster_log = \
+            os.path.join("{output_dir}", "cluster_log", \
+                "fa_to_2bit.log"),
+        queue = "30min",
+        time = "0:30:00"
     log:
-        LOG_local_log = "{output_dir}/local_log/fa_to_2bit.log",
+        LOG_local_log = \
+            os.path.join("{output_dir}", "local_log", \
+                "fa_to_2bit.log")
     resources:
-        threads = 8,
+        threads = 1,
         mem = 20000
     benchmark:
-        "{output_dir}/cluster_log/fa_to_2bit_benchmark.log"
+        os.path.join("{output_dir}", "local_log", \
+            "fa_to_2bit_benchmark.log")
     conda:
         "env_yaml/ucsc.yaml"
     shell:
         """
-        faToTwoBit {input.genome} {output.genome_2bit} \
+        faToTwoBit {params.FASTA_genome} {output.TWOBIT_genome_2bit} \
         2> {log.LOG_local_log};
         """
 
-#################################################################################
+##############################################################################
 ### deepTools: GC bias plots
-#################################################################################
+##############################################################################
 
 rule GC_plot:
     input:
-        bam = "{output_dir}/bam_coverages/{sample}_sorted.bam",
-        bai = expand("{output_dir}/bam_coverages/{sample}_sorted.bam.bai", output_dir=config["output_dir"], sample=get_all_samples()),
-        genome_2bit = "{output_dir}/genome.2bit"
+        BAM_sorted = \
+            os.path.join("{output_dir}", "coverages", "{sample}_sorted.bam"),
+        BAI_index = os.path.join(\
+            "{output_dir}", "coverages", "{sample}_sorted.bam.bai"),
+        TWOBIT_genome_2bit = os.path.join("{output_dir}", "genome.2bit")
     output:
-        gc_plot = "{output_dir}/GC_bias/{sample}_gc.png"
+        PNG_gc_plot = \
+            os.path.join("{output_dir}", "GC_bias", "{sample}_gc.png")
     params:
-        gc_tsv = "{output_dir}/GC_bias/{sample}_gc.tsv",
-        LOG_cluster_log = "{output_dir}/cluster_log/GC_plot_{sample}.log",
+        TSV_gc_tsv = \
+            os.path.join("{output_dir}", "GC_bias", "{sample}_gc.tsv"),
+        LOG_cluster_log = \
+            os.path.join("{output_dir}", "cluster_log", \
+                "GC_plot_{sample}.log"),
+        effective_genome_size = get_effective_genome_size(),
         queue = "6hours",
         time = "6:00:00"
     log:
-        LOG_local_log = "{output_dir}/local_log/GC_plot_{sample}.log",
+        LOG_local_log = \
+            os.path.join("{output_dir}", "local_log", \
+                "GC_plot_{sample}.log")
     resources:
-        threads = 8,
+        threads = 4,
         mem = 20000
     benchmark:
-        "{output_dir}/cluster_log/GC_plot_{sample}_benchmark.log"
+        os.path.join("{output_dir}", "local_log", \
+            "GC_plot_{sample}_benchmark.log")
     conda:
         "env_yaml/deeptools.yaml"
     shell:
         """
         computeGCBias \
-        --bamfile {input.bam} \
-        --effectiveGenomeSize 2913022398 \
-        --genome {input.genome_2bit} \
+        --bamfile {input.BAM_sorted} \
+        --effectiveGenomeSize {params.effective_genome_size} \
+        --genome {input.TWOBIT_genome_2bit} \
         --numberOfProcessors {resources.threads} \
-        --GCbiasFrequenciesFile {params.gc_tsv} \
-        --biasPlot {output.gc_plot} \
+        --GCbiasFrequenciesFile {params.TSV_gc_tsv} \
+        --biasPlot {output.PNG_gc_plot} \
         --plotFileFormat png \
         2> {log.LOG_local_log};
         """
-
-
-
-
-# generate effective genome sizes
