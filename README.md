@@ -2,10 +2,10 @@
 *Maciej_Bak  
 Swiss_Institute_of_Bioinformatics*
 
-[General information about the project]  
-
-This pipeline is based on the example usage from the deepTools manual:  
-https://deeptools.readthedocs.io/en/develop/index.html
+[deepTools](https://deeptools.readthedocs.io/en/develop/) is a very nice toolset for exploring RNA-Seq data.  
+This repository is a snakemake workflow that is based on the example usage from the deepTools manual:  
+https://deeptools.readthedocs.io/en/develop/content/example_usage.html  
+My aim was to develop an automatized and reproducible pipeline for my research which I would now happily share with the community :) 
 
 ## Snakemake pipeline execution
 Snakemake is a workflow management system that helps to create and execute data processing pipelines. It requires Python 3 and can be most easily installed via the bioconda package from the anaconda cloud service.
