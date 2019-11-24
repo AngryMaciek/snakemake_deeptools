@@ -23,4 +23,11 @@ design_file: "sample_design_table.tsv"
 # path to the genomic sequence in FASTA format
 genome: "resources/Homo_sapiens.GRCh38.dna.primary_assembly.fa"
 
+# path to the table with effective genome sizes
+effective_genome_sizes: "effective_genome_sizes.tsv"
+
+# genome version
+# available options are row names from the effective genome sizes table
+genome_version: "GRCh38"
+
 ...
