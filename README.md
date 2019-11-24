@@ -40,16 +40,16 @@ In case you are missing some dependancy packages please install them first (with
 Specify all the required information (input/output/parameters) in the config.yaml  
 The main input to the pipeline is a simple design table which has to have the following format:
 
-sample  bam
-[sample_name] [path_to_bam]
+sample  bam  
+[sample_name] [path_to_bam]  
 ...
 
+Where:
 * Each row is a sequencing sample.
-* All the bam files need to have a different name. Regardless of their location/directory.
-* Bam files will be sorted in this pipeline.
+* All the bam files need to have a different name regardless of their location.
 * Design table might have more columns than these above.
 
-Apart from the design table the pipeline requires a FASTA genome file.
+Apart from the design table the pipeline requires a FASTA-formatted genome file.
 
 Once the metadata are ready write a DAG (directed acyclic graph) into dag.pdf:
   ```bash
