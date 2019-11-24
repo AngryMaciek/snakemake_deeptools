@@ -4,8 +4,8 @@ snakemake \
 --configfile config.yaml \
 --cluster-config cluster_config.json \
 --use-conda \
---cores 10 \
---local-cores 2 \
+--cores 20 \
+--local-cores 1 \
 -p \
 --cluster \
 "sbatch \
